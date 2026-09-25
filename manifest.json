@@ -1,0 +1,21 @@
+{
+ "name": "Nordfracht",
+ "short_name": "Nordfracht",
+ "start_url": "./index.html",
+ "display": "fullscreen",
+ "orientation": "landscape",
+ "background_color": "#08141c",
+ "theme_color": "#08141c",
+ "icons": [
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "apple-touch-icon.png",
+   "sizes": "180x180",
+   "type": "image/png"
+  }
+ ]
+}
