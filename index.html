@@ -85,6 +85,17 @@ body{font-family:'Saira Condensed','Arial Narrow','Roboto Condensed',system-ui,s
 @keyframes pop{0%{opacity:0;transform:translateY(8px) scale(.9)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
 #dmg{position:absolute;left:50%;top:50%;width:0;height:0}
 .arc{position:absolute;left:-110px;top:-110px;width:220px;height:220px;border-radius:50%;border:7px solid transparent;border-top-color:rgba(255,60,40,.85);box-sizing:border-box;transition:opacity .9s ease-out}
+#killcam{position:fixed;inset:0;z-index:6;pointer-events:none}
+.kc-bar{position:absolute;left:0;right:0;height:9vh;background:#000}
+.kc-top{top:0}.kc-bot{bottom:0}
+.kc-head{position:absolute;left:calc(22px + env(safe-area-inset-left,0px));top:calc(9vh + 12px);text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.kc-rec{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);margin-right:8px;vertical-align:1px;animation:rec 1s steps(2) infinite}
+@keyframes rec{50%{opacity:0}}
+.kc-names{font-weight:800;font-size:28px;letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+.kc-names .a{color:var(--blue)}.kc-names .e{color:var(--red)}.kc-names .m{color:var(--amber)}.kc-names .x{color:var(--dim);margin:0 10px}
+.kc-slow{position:absolute;left:50%;bottom:calc(9vh + 14px);transform:translateX(-50%);font-weight:800;font-size:15px;letter-spacing:.3em;text-transform:uppercase;color:var(--amber);text-shadow:0 1px 3px rgba(0,0,0,.8)}
+#kcSkip{position:absolute;right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(9vh + 10px);pointer-events:auto}
+@media (prefers-reduced-motion:reduce){.kc-rec{animation:none}}
 #banner{position:absolute;left:50%;top:24%;transform:translateX(-50%);font-weight:800;font-size:26px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
 #reload{position:absolute;left:50%;top:calc(50% + 30px);transform:translateX(-50%);width:120px;text-align:center;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber)}
 #reload .bar{margin-top:4px;height:3px;background:rgba(238,242,234,.2)}
@@ -264,6 +275,13 @@ h2{margin:0;font-weight:800;font-size:clamp(40px,8vw,78px);line-height:.9;text-t
     </div>
     <div class="ctrlline">Handy: links laufen · rechts zielen · Feuerknopf halten · ⇄ Waffe wechseln. PC: WASD · Maus · R nachladen · 1/2 oder Q Waffe · G Granate · F Blendgranate.</div>
   </div>
+</div>
+
+<div id="killcam" hidden>
+  <div class="kc-bar kc-top"></div><div class="kc-bar kc-bot"></div>
+  <div class="kc-head"><div class="eyebrow"><span class="kc-rec"></span>Finale Killcam</div><div class="kc-names" id="kcNames"></div></div>
+  <div class="kc-slow" id="kcSlow" hidden>Zeitlupe</div>
+  <button class="btn ghost sm" id="kcSkip">Überspringen</button>
 </div>
 
 <div class="ov" id="over" hidden>
@@ -1332,7 +1350,7 @@ const BOTW={
   mp:{burst:[4,7],gap:0.075,cool:[0.9,1.6],dmg:[6,8],range:30,acc:0.55,fall:0.016,pref:10,scale:0.62},
   sg:{burst:[1,1],gap:0,cool:[0.95,1.4],dmg:[34,48],range:13,acc:0.8,fall:0.03,pref:4,scale:1.05},
   sr:{burst:[1,1],gap:0,cool:[2.3,3.2],dmg:[48,62],range:75,acc:0.62,fall:0.004,pref:34,scale:1.35},
-  lmg:{burst:[8,14],gap:0.085,cool:[0.8,1.4],dmg:[6,9],range:55,acc:0.42,fall:0.006,pref:5,scale:1.2}
+  lmg:{burst:[5,9],gap:0.09,cool:[1.2,2.0],dmg:[5,7],range:50,acc:0.32,fall:0.008,pref:5,scale:1.2}
 };
 const BOTMAG={br:20,mp:32,sg:7,sr:5,lmg:100}, BOTRL={br:2.3,mp:2.0,sg:3.2,sr:3.3,lmg:3.6};
 const BOT_NAMES=['Falke','Keiler','Anker','Möwe','Brecher','Lotse','Riff','Sturm','Kompass','Tide','Boje','Kran'];
@@ -1473,7 +1491,7 @@ function spawnBoss(){
   const p = bestSpawn(tmp, MAP.survSpawns.concat(SPAWN_CANDS), null, 10);
   const a = addActor({kind:'bot', name:'Koloss', team:1, w:'lmg', boss:true, x:p[0], z:p[1]});
   collide(a.pos,0.55);
-  a.hp=a.maxHp=Math.round(3000*(humans.length>1?1.5:1));
+  a.hp=a.maxHp=Math.round(1600*(humans.length>1?1.5:1));
   const t=humans.find(h=>!h.dead)||humans[0]; if(t) a.yaw=Math.atan2(t.pos.x-a.pos.x, t.pos.z-a.pos.z);
 }
 
@@ -1567,7 +1585,7 @@ function onClientData(m){
   if(!m || !m.t) return;
   if(m.t==='start') startClient(m);
   else if(m.t==='s'){ if(state==='play'||state==='pause') applySnap(m); }
-  else if(m.t==='end'){ if(state==='play'||state==='pause') showEnd(m.r); }
+  else if(m.t==='end'){ if(state==='play'||state==='pause') onMatchEnd(m.r); }
   else if(m.t==='full'){ setNetStatus('Das Spiel ist schon voll.'); }
 }
 function applySnap(s){
@@ -1602,7 +1620,7 @@ function applyDamage(v, dmg, att, head, from){
 }
 function killActor(v, att, head){
   v.dead=true; v.hp=0; v.deadT=0; v.deaths++; v.target=null; v.streak=0;
-  if(att && att!==v){ att.kills++; att.streak++; if(mode==='tdm') match.scores[att.team===0?0:1]++; }
+  if(att && att!==v){ match.lastKill={k:att.id, v:v.id, t:r2(match.time)}; att.kills++; att.streak++; if(mode==='tdm') match.scores[att.team===0?0:1]++; }
   if(mode==='surv'){
     if(v.kind!=='bot'){ const other=actors.some(h=>h!==v && h.kind!=='bot' && !h.dead); v.respawnT = other?RESP.surv:0; }
     else v.respawnT=0;
@@ -1625,6 +1643,7 @@ function handleEvent(ev){
   if(!me) return;
   switch(ev[0]){
     case 'x': {
+      recEvent({k:'x', f:[ev[1],ev[2],ev[3]], to:[ev[4],ev[5],ev[6]], id:ev[7], w:WKEYS[ev[8]]||'br', s:!!ev[9]});
       if(ev[7]===me.id) break;
       _f.set(ev[1],ev[2],ev[3]); _t.set(ev[4],ev[5],ev[6]);
       tracer(_f,_t,0xff8a4a,0.02);
@@ -1647,7 +1666,7 @@ function handleEvent(ev){
       break;
     }
     case 'gs': { if(!nades.some(n=>n.id===ev[1])) spawnNade(ev[2], byId(ev[9]), [ev[3],ev[4],ev[5]], [ev[6],ev[7],ev[8]], ev[1], false); break; }
-    case 'gx': { const n=nades.find(q=>q.id===ev[1]); if(n) removeNade(n); explosionFx(ev[2], _f.set(ev[3],ev[4],ev[5])); break; }
+    case 'gx': { recEvent({k:'gx', type:ev[2], p:[ev[3],ev[4],ev[5]]}); const n=nades.find(q=>q.id===ev[1]); if(n) removeNade(n); explosionFx(ev[2], _f.set(ev[3],ev[4],ev[5])); break; }
     case 'fi': fireFx(ev[1],ev[2],ev[3],ev[4]); break;
     case 'fl': if(ev[1]===me.id) flashLocal(ev[2]); break;
     case 'boss': { banner(ev[1]>1?`${ev[1]} Kolosse im Anmarsch`:'Koloss im Anmarsch'); addNote('Bosskampf: Er hält extrem viel aus. Granaten helfen.'); sfx.horn(); break; }
@@ -1675,7 +1694,7 @@ function updateBot(a, dt, diff){
       let bt=null, bd=1e9;
       for(const o of actors){ if(o.dead||!isEnemy(a,o)) continue; const d=Math.hypot(o.pos.x-a.pos.x,o.pos.z-a.pos.z); if(d<bd){ bd=d; bt=o; } }
       const vis = bt && !(a.blindT>0) && bd<bw.range && los(a.pos.x,a.pos.z,bt.pos.x,bt.pos.z);
-      if(vis && a.target!==bt){ a.react=0.35; a.burst=0; }
+      if(vis && a.target!==bt){ a.react=0.8; a.burst=0; }
       a.target = vis?bt:null;
       if(bt && a.navTarget!==bt){ a.navTarget=bt; a.fieldT=0; }
     }
@@ -1713,7 +1732,7 @@ function updateBot(a, dt, diff){
     mvx=(dz/d)*a.strafe; mvz=(-dx/d)*a.strafe; spd=1.3;
     if(d>bw.pref){ mvx+=dx/d*1.4; mvz+=dz/d*1.4; spd=a.w==='sg'?3:1.9; }
     if(d<2.2){ mvx=-dx/d; mvz=-dz/d; spd=1.5; }
-    if(a.boss){ const k=d>5?1:0.25; mvx=dx/d*k+(dz/d)*a.strafe*0.3; mvz=dz/d*k-(dx/d)*a.strafe*0.3; spd=d>5?3.1:1.0; }
+    if(a.boss){ const k=d>5?1:0.25; mvx=dx/d*k+(dz/d)*a.strafe*0.3; mvz=dz/d*k-(dx/d)*a.strafe*0.3; spd=d>5?2.6:0.9; }
     if(a.react>0) a.react-=dt;
     else if(a.spawnProt<=0 && a.reloadT<=0){
       if(a.burst>0){ a.burstT-=dt; if(a.burstT<=0){ botShoot(a,t,d,diff); a.burst--; a.burstT=bw.gap; if(a.mag<=0) botReload(a,false); } }
@@ -1725,7 +1744,7 @@ function updateBot(a, dt, diff){
     if(a.fieldT<=0){ buildField(a.field, a.navTarget.pos.x, a.navTarget.pos.z); a.fieldT=0.7+Math.random()*0.3; }
     if(navDir(a.field,a.pos.x,a.pos.z,nav)){ mvx=nav.x; mvz=nav.z; }
     else { const dx=a.navTarget.pos.x-a.pos.x, dz=a.navTarget.pos.z-a.pos.z, d=Math.hypot(dx,dz)||1; mvx=dx/d; mvz=dz/d; }
-    spd = a.boss?3.9:a.w==='mp'?3.7:3.4;
+    spd = a.boss?3.4:a.w==='mp'?3.7:3.4;
     a.yaw += angDiff(Math.atan2(mvx,mvz),a.yaw)*Math.min(1,dt*8);
   }
   if(a.blindT>0) spd*=0.45;
@@ -1989,6 +2008,25 @@ function throwNade(kind){
   else send({t:'g', ty:type, p:p.map(r2), v:v.map(r2)});
 }
 
+// ---------- Replay recording (for the final killcam) ----------
+const REC={frames:[], ev:[], acc:0};
+function recReset(){ REC.frames=[]; REC.ev=[]; REC.acc=0; }
+function recEvent(e){ e.t=match.time; REC.ev.push(e); }
+function recFrame(dt){
+  REC.acc+=dt; if(REC.acc<0.05) return; REC.acc=0;
+  const f={t:match.time, a:{}};
+  for(const a of actors){
+    const dead = a===me ? LD.active : a.dead;
+    const since = dead ? match.time-(a===me?LD.t:(a.deadT||0)) : -1;
+    const pitch = a===me ? player.pitch : (a.kind==='remote' ? a.pitch : null);
+    f.a[a.id]=[a.pos.x, a.pos.z, a.yaw, pitch, since, a===me?player.moveAmt*4.6:a.speed, a===me?GEAR[W.cur].key:a.w];
+  }
+  REC.frames.push(f);
+  const cut=match.time-7;
+  while(REC.frames.length && REC.frames[0].t<cut) REC.frames.shift();
+  while(REC.ev.length && REC.ev[0].t<cut) REC.ev.shift();
+}
+
 // ---------- Local player: weapon state ----------
 const W = { cur:0, ammo:[], lethal:1, tac:2, throwT:0, shake:0, cd:0, reloading:false, relT:0, relDur:2, shellT:0, snd:{},
   bloom:0, ads:0, adsWant:false, kick:0, rOff:0, rOffYaw:0, flashT:0, clicked:false, swapT:0, swapTo:-1, pumpT:0, pumpSnd:true, boltT:0, boltSnd:true };
@@ -2051,7 +2089,7 @@ function fireWeapon(){
       } else { const nrm=h.face?h.face.normal.clone().transformDirection(h.object.matrixWorld):null; impact(h.point,nrm,false); }
     } else end=_v2.copy(camera.position).addScaledVector(_dir, Math.min(160,wd.range));
     if(i<3) tracer(muzzle, end, 0xffdca0, n>1?0.008:0.014);
-    if(!fxSent){ fxSent=true; shotFx(muzzle,end); }
+    if(!fxSent){ fxSent=true; shotFx(muzzle,end); recEvent({k:'x', f:[muzzle.x,muzzle.y,muzzle.z], to:[end.x,end.y,end.z], id:me.id, w:wd.key, s:wd.suppressed}); }
   }
   agg.forEach((e,tgt)=>{
     stats.hits++; tgt.flash=0.09;
@@ -2410,8 +2448,8 @@ function startGame(){
   if(net && net.role==='client') return;
   mode=menuMode;
   loadMap(menuMap); equip();
-  clearActors(); clearWorldFx();
-  Object.assign(match,{nextBoss:5000,time:0,scores:[0,0],over:false,endT:-1,spawnT:1.2,sides:Math.random()<0.5?[0,1]:[1,0],press:[0,0],lastFlip:0,flipCheck:1});
+  clearActors(); clearWorldFx(); recReset();
+  Object.assign(match,{nextBoss:5000,bossCD:0,lastKill:null,time:0,scores:[0,0],over:false,endT:-1,spawnT:1.2,sides:Math.random()<0.5?[0,1]:[1,0],press:[0,0],lastFlip:0,flipCheck:1});
   const on=online();
   me=addActor({kind:'local', name:on?'Spieler 1':'Du', team:0, w:'br'});
   let remote=null;
@@ -2433,7 +2471,7 @@ function startGame(){
 function startClient(m){
   mode=m.mode;
   loadMap(m.map||'ship'); equip();
-  clearActors(); clearWorldFx();
+  clearActors(); clearWorldFx(); recReset();
   Object.assign(match,{time:0,scores:[0,0],over:false,endT:-1,spawnT:0,sides:[0,1],press:[0,0],lastFlip:0,flipCheck:1});
   me=addActor({id:m.id, kind:'local', name:'Spieler 2', team:m.team, w:'br', x:m.x, z:m.z});
   nextId=1000;
@@ -2444,12 +2482,100 @@ function endMatch(){
   if(match.over) return;
   match.over=true;
   const r={mode, scores:match.scores.slice(), time:r2(match.time),
-    rows:actors.filter(a=>mode!=='surv'||a.kind!=='bot').map(a=>({id:a.id,name:a.name,team:a.team,k:a.kills,d:a.deaths,s:a.score}))};
+    rows:actors.filter(a=>mode!=='surv'||a.kind!=='bot').map(a=>({id:a.id,name:a.name,team:a.team,k:a.kills,d:a.deaths,s:a.score})),
+    kc:(mode==='tdm'||mode==='ffa') ? match.lastKill : null};
   send({t:'end', r});
-  setTimeout(()=>showEnd(r), 700);
+  onMatchEnd(r);
 }
+function onMatchEnd(r){
+  if(r.kc && r.rows && r.rows.length){ banner('Runde vorbei'); setTimeout(()=>{ if(state==='play'||state==='pause') startKillcam(r); }, 1000); }
+  else setTimeout(()=>showEnd(r), 700);
+}
+// ---------- Final killcam ----------
+const KC={on:false};
+function kcFrameAt(t){
+  const F=REC.frames; if(!F.length) return null;
+  let i=KC.fi||0; while(i>0 && F[i].t>t) i--; while(i<F.length-1 && F[i+1].t<=t) i++; KC.fi=i;
+  const f0=F[i], f1=F[Math.min(i+1,F.length-1)], k=f1.t>f0.t?clamp((t-f0.t)/(f1.t-f0.t),0,1):0;
+  return {f0,f1,k};
+}
+function kcLerp(fr,id){
+  const a=fr.f0.a[id], b=fr.f1.a[id]||a; if(!a) return null;
+  return {x:lerp(a[0],b[0],fr.k), z:lerp(a[1],b[1],fr.k), yaw:a[2]+angDiff(b[2],a[2])*fr.k, pitch:(a[3]===null||b[3]===null)?null:lerp(a[3],b[3],fr.k), since:a[4], sp:a[5], w:a[6]};
+}
+function startKillcam(r){
+  const killer=byId(r.kc.k), victim=byId(r.kc.v);
+  if(!killer || !victim || REC.frames.length<5){ showEnd(r); return; }
+  state='killcam'; shutUp(); releaseTouches(); input.fire=false;
+  if(document.exitPointerLock) try{document.exitPointerLock();}catch(e){}
+  $('#hud').hidden=true; $('#pause').hidden=true; scopeEl.style.opacity='0'; vign.style.opacity='0'; flashOv.style.opacity='0';
+  $('#kcNames').innerHTML = nameSpan(killer)+'<span class="x">✕</span>'+nameSpan(victim);
+  $('#killcam').hidden=false;
+  const tk=r.kc.t, t0=Math.max(REC.frames[0].t, tk-2.8);
+  Object.assign(KC,{on:true, r, killer, victim, tk, rt:t0, t1:Math.min(REC.frames[REC.frames.length-1].t, tk+0.9), ei:REC.ev.findIndex(e=>e.t>=t0), fi:0, meAv:null, vm:null, flashT:0, kick:0, hidden:[]});
+  if(KC.ei<0) KC.ei=REC.ev.length;
+  if(killer!==me){ KC.meAv=makeAvatar(me); if(KC.meAv.marker) KC.meAv.marker.visible=false; }
+  if(killer.av){ killer.av.g.visible=false; }
+  actors.forEach(a=>{ if(a.av && a.av.marker){ a.av.marker.visible=false; } });
+  VMS.forEach(v=>v.g.visible=false);
+  const wk=killer===me?null:((killer.w==='lmg')?'br':killer.w);
+  if(killer===me){ KC.vm=VMS[W.cur]; KC.vm.g.visible=true; }
+  else { KC.vm=BUILDERS[wk||'br'](new Set()); wScene.add(KC.vm.g); }
+}
+function kcGroup(a){ return a===me ? (KC.meAv&&KC.meAv.g) : (a.av&&a.av.g); }
+function updateKillcam(dt){
+  const slow = KC.rt>KC.tk-0.3 && KC.rt<KC.tk+0.35;
+  const sdt = dt*(slow?0.3:1);
+  KC.rt+=sdt;
+  const fr=kcFrameAt(KC.rt); if(!fr){ endKillcam(); return; }
+  for(const a of actors){
+    const g=kcGroup(a); if(!g) continue;
+    const s=kcLerp(fr,a.id); if(!s){ g.visible=false; continue; }
+    if(a!==KC.killer) g.visible=true;
+    g.position.set(s.x,0,s.z); g.rotation.y=s.yaw;
+    const dead = s.since>=0 && s.since<=KC.rt;
+    g.rotation.x = dead ? -Math.min(1,(KC.rt-s.since)/0.45)*Math.PI/2*0.98 : 0;
+    const av = a===me ? KC.meAv : a.av;
+    if(av && !dead){ a.kcPh=(a.kcPh||0)+sdt*s.sp*3.2; const amp=Math.min(0.75,s.sp*0.2), s1=Math.sin(a.kcPh); av.legs[0].th.rotation.x=-s1*amp; av.legs[1].th.rotation.x=s1*amp; }
+  }
+  while(KC.ei<REC.ev.length && REC.ev[KC.ei].t<=KC.rt){
+    const e=REC.ev[KC.ei++];
+    if(e.k==='x'){
+      _f.set(e.f[0],e.f[1],e.f[2]); _t.set(e.to[0],e.to[1],e.to[2]);
+      const mine=e.id===KC.killer.id;
+      tracer(_f,_t,mine?0xffdca0:0xff8a4a,mine?0.014:0.02);
+      const d=Math.hypot(_f.x-camera.position.x,_f.z-camera.position.z);
+      sfx.gun(e.w, mine?0.8:clamp(1-d/70,0.08,1)*0.5, !mine&&d>20, e.s);
+      if(mine){ KC.flashT=e.s?0:0.05; KC.kick=1; }
+    } else if(e.k==='gx'){ explosionFx(e.type, _f.set(e.p[0],e.p[1],e.p[2])); }
+  }
+  const ks=kcLerp(fr,KC.killer.id);
+  if(ks){
+    let pitch=ks.pitch;
+    if(pitch===null){ const vs=kcLerp(fr,KC.victim.id); pitch = vs ? Math.atan2(1.25-1.62, Math.max(1,Math.hypot(vs.x-ks.x,vs.z-ks.z))) : 0; }
+    const eye=1.62*(KC.killer.boss?1.55:1);
+    camera.position.set(ks.x, eye, ks.z);
+    camera.rotation.set(pitch, ks.yaw+Math.PI, 0);
+    camera.fov=72; camera.updateProjectionMatrix();
+  }
+  const vm=KC.vm;
+  if(vm){ KC.kick=Math.max(0,KC.kick-dt*12); KC.flashT-=dt; vm.g.position.copy(vm.hip); vm.g.position.z+=KC.kick*0.03; vm.g.rotation.set(KC.kick*0.04,0,0); vm.flash.visible=KC.flashT>0; }
+  $('#kcSlow').hidden=!slow;
+  if(KC.rt>=KC.t1) endKillcam();
+}
+function endKillcam(){
+  if(!KC.on) return;
+  KC.on=false;
+  $('#killcam').hidden=true;
+  if(KC.meAv){ scene.remove(KC.meAv.g); Object.values(KC.meAv.mats).forEach(m=>m.dispose()); }
+  if(KC.killer && KC.killer.av) KC.killer.av.g.visible=true;
+  if(KC.vm){ KC.vm.flash.visible=false; if(KC.killer!==me){ wScene.remove(KC.vm.g); } }
+  VMS.forEach((v,j)=>v.g.visible=j===W.cur);
+  showEnd(KC.r);
+}
+$('#kcSkip').addEventListener('click', endKillcam);
 function showEnd(r){
-  if(state!=='play' && state!=='pause') return;
+  if(state!=='play' && state!=='pause' && state!=='killcam') return;
   state='over'; shutUp(); releaseTouches();
   if(document.exitPointerLock) try{document.exitPointerLock();}catch(e){}
   const mine=r.rows.find(x=>x.id===me.id)||{k:me.kills,d:me.deaths,s:me.score};
@@ -2486,6 +2612,7 @@ function showEnd(r){
 function pauseGame(){ if(state!=='play') return; state='pause'; shutUp(); releaseTouches(); input.fire=false; fireBtn.classList.remove('on'); $('#pauseEyebrow').textContent = online()?'Pause · das Online-Spiel läuft weiter':'Pause'; $('#pause').hidden=false; }
 function resumeGame(){ if(state!=='pause') return; state='play'; $('#pause').hidden=true; initAudio(); if(!usingTouch && !lockFailed){ try{ const r=touchLayer.requestPointerLock(); if(r&&r.catch) r.catch(()=>{}); }catch(e){} } }
 function toMenu(){
+  if(KC.on){ KC.on=false; $('#killcam').hidden=true; if(KC.meAv) scene.remove(KC.meAv.g); if(KC.vm && KC.killer!==me) wScene.remove(KC.vm.g); }
   if(online() && net.role==='host' && (state==='play'||state==='pause')) { match.over=true; send({t:'end', r:{mode, scores:match.scores, time:match.time, rows:[]}}); }
   state='menu'; clearActors(); clearWorldFx(); shutUp(); releaseTouches(); $('#klasse').hidden=true;
   $('#pause').hidden=true; $('#over').hidden=true; $('#hud').hidden=true; $('#menu').hidden=false;
@@ -2615,11 +2742,14 @@ function updateHost(dt){
     const alive=actors.filter(a=>a.kind==='bot'&&!a.dead).length;
     const kills=humans.reduce((s,h)=>s+h.kills,0);
     const co=humans.length>1;
-    const maxE=Math.min(co?10:8, 3+Math.floor(kills/4)+(co?2:0));
+    const bossesAlive=actors.filter(a=>a.boss&&!a.dead).length;
+    const maxE=Math.max(2, Math.min(co?10:8, 3+Math.floor(kills/4)+(co?2:0)) - bossesAlive*2);
     match.spawnT-=dt;
     if(match.spawnT<=0 && alive<maxE){ spawnKaperer(); match.spawnT=Math.max(1.0,2.8-kills*0.03); }
     const total=humans.reduce((s,h)=>s+h.score,0);
-    if(total>=match.nextBoss){ const cnt=Math.round(match.nextBoss/5000); for(let i=0;i<cnt;i++) spawnBoss(); match.nextBoss+=5000; emit(['boss', cnt]); }
+    if(bossesAlive>0) match.bossCD=20;
+    else if(match.bossCD>0) match.bossCD-=dt;
+    if(bossesAlive===0 && match.bossCD<=0 && total>=match.nextBoss){ const cnt=Math.round(match.nextBoss/5000); for(let i=0;i<cnt;i++) spawnBoss(); match.nextBoss+=5000; emit(['boss', cnt]); }
   }
   if(!match.over){
     if(mode==='tdm' && (match.scores[0]>=LIMITS.tdm || match.scores[1]>=LIMITS.tdm || match.time>=TIME_LIMIT)) endMatch();
@@ -2720,7 +2850,7 @@ function renderFrame(){
   water.position.x = Math.round(camera.position.x/50)*50; water.position.z = Math.round(camera.position.z/50)*50;
   waterMat.uniforms.camPos.value.copy(camera.position);
   renderer.render(scene, camera);
-  if((state==='play'||state==='pause') && !LD.active){ renderer.clearDepth(); renderer.render(wScene, wCam); }
+  if(((state==='play'||state==='pause') && !LD.active) || state==='killcam'){ renderer.clearDepth(); renderer.render(wScene, wCam); }
 }
 const clock=new THREE.Clock();
 function loop(){
@@ -2733,9 +2863,11 @@ function loop(){
   if(running && me){
     const sprint = updateLocal(dt, state==='play');
     if(isHost()) updateHost(dt); else updateClient(dt);
-    updateNades(dt); updateWorldFx(dt);
+    updateNades(dt); updateWorldFx(dt); recFrame(dt);
     updateAvatars(dt); updateFX(dt); updateCamera();
     if(state==='play') updateHUD(dt, sprint);
+  } else if(state==='killcam'){
+    updateFX(dt); updateWorldFx(dt); updateKillcam(dt);
   } else if(state==='menu' || state==='over'){
     menuT+=dt*0.06;
     const O=MAP.orbit, a=menuT+2.2;
